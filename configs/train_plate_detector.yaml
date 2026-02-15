@@ -1,0 +1,71 @@
+# ============================================================
+# Training Configuration - License Plate Detector
+# Model: FasterRCNN MobileNetV3 FPN
+# Dataset: Roboflow COCO-format License Plate Detection
+# ============================================================
+
+# --- Data ---
+data:
+  root_dir: "data/coco"
+  num_workers: 4
+  pin_memory: true
+
+# --- Model ---
+model:
+  type: "fasterrcnn"            # "fasterrcnn" or "ssd"
+  backbone: "mobilenet_v3_large" # lightweight for GTX 1650
+  num_classes: 2                 # background + license_plate
+  pretrained_backbone: true
+  min_size: 640
+  max_size: 800
+
+# --- Training ---
+training:
+  epochs: 50
+  batch_size: 4                  # Small for 4GB GPU
+  lr: 0.005
+  momentum: 0.9
+  weight_decay: 0.0005
+  
+  # Mixed Precision (AMP)
+  amp_enabled: true
+  
+  # Gradient Clipping
+  grad_clip_max_norm: 10.0
+  
+  # Learning Rate Scheduler
+  scheduler:
+    type: "cosine"               # "cosine" or "step"
+    warmup_epochs: 3
+    warmup_factor: 0.001
+    T_max: 50                    # For cosine scheduler
+    step_size: 15                # For step scheduler
+    gamma: 0.1
+  
+  # Checkpointing
+  checkpoint_dir: "checkpoints"
+  checkpoint_interval: 5         # Save every N epochs
+  resume_from: null              # Path to checkpoint to resume
+  
+  # Early Stopping
+  early_stopping:
+    enabled: true
+    patience: 10
+    min_delta: 0.001
+
+# --- Evaluation ---
+evaluation:
+  iou_threshold: 0.5
+  confidence_threshold: 0.5
+  eval_interval: 1               # Evaluate every N epochs
+
+# --- Logging ---
+logging:
+  log_dir: "runs"
+  csv_log: true
+  tensorboard: true
+  log_interval: 10               # Log every N batches
+
+# --- Device ---
+device: "auto"                   # "auto", "cuda", "cpu"
+seed: 42

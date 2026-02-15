@@ -1,0 +1,70 @@
+# Dataset (download via script)
+data/
+dataset.coco
+dataset.yolov8
+*.zip
+
+# Checkpoints
+checkpoints/
+*.pth
+*.pt
+
+# Logs and runs
+runs/
+logs/
+*.log
+tensorboard/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Temp files
+*.tmp
+temp/
+tmp/
+
+# Project specific
+PROJECT_DETAILS_FOR_CV.txt
+output/
+results/

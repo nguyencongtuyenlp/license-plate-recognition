@@ -1,0 +1,30 @@
+# Core Deep Learning
+torch>=2.0.0
+torchvision>=0.15.0
+torchmetrics>=1.0.0
+
+# Computer Vision
+opencv-python>=4.8.0
+Pillow>=10.0.0
+
+# OCR
+easyocr>=1.7.0
+
+# Tracking (Kalman Filter + Hungarian Algorithm)
+filterpy>=1.4.5
+lap>=0.4.0
+scipy>=1.11.0
+
+# API
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-multipart>=0.0.6
+
+# Config & Logging
+PyYAML>=6.0
+tensorboard>=2.14.0
+
+# Utilities
+tqdm>=4.65.0
+numpy>=1.24.0
+pandas>=2.0.0
