@@ -7,7 +7,8 @@ dataset.yolov8
 # Checkpoints
 checkpoints/
 *.pth
-*.pt
+# Keep training artifacts best models
+!training_artifacts/**/*.pt
 
 # Logs and runs
 runs/
@@ -57,7 +58,6 @@ venv.bak/
 
 # Jupyter Notebook
 .ipynb_checkpoints
-*.ipynb
 
 # Temp files
 *.tmp
@@ -68,3 +68,10 @@ tmp/
 PROJECT_DETAILS_FOR_CV.txt
 output/
 results/
+
+# Demo videos (too large for GitHub)
+video.mp4
+video2.mp4
+*.avi
+*.mov
+demo_results/*.mp4
