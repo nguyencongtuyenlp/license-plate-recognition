@@ -1,226 +1,439 @@
-# Lightning.ai Training Guide
+# ⚡ Lightning.ai Training Guide
 
-Complete guide for training the ALPR model on Lightning.ai's free GPU tier.
-
-## Why Lightning.ai?
-
-- **Free GPU**: T4 (16GB VRAM) available on free tier
-- **Fast Training**: ~1.5-2 hours for 50 epochs (vs 6-8 hours on GTX 1650)
-- **No Setup**: Pre-configured PyTorch environment
-- **Cloud Storage**: Save checkpoints to cloud
+Complete step-by-step guide to train the license plate detector on Lightning.ai's free T4 GPU.
 
 ---
 
-## Step 1: Create Lightning.ai Studio
+## 📋 Prerequisites
 
-1. Go to [Lightning.ai](https://lightning.ai)
-2. Sign up / Log in
-3. Create new Studio:
-   - **Name**: ALPR Training
-   - **GPU**: T4 (16GB) - Free tier
-   - **Environment**: PyTorch 2.0+
+- Lightning.ai account (free tier)
+- GitHub repository URL: `https://github.com/nguyencongtuyenlp/license-plate-recognition.git`
+- Roboflow API key (optional, for dataset download)
 
 ---
 
-## Step 2: Clone Repository
+## 🚀 Step-by-Step Setup
+
+### 1️⃣ Create Lightning.ai Studio
+
+1. Go to [Lightning.ai](https://lightning.ai/)
+2. Sign in with GitHub
+3. Click **"New Studio"**
+4. Configure:
+   - **Name:** `ALPR Training`
+   - **GPU:** **T4 (16GB)** ✅ (Free tier)
+   - **Environment:** PyTorch 2.0+
+5. Click **"Create Studio"**
+
+⏱️ Wait ~1-2 minutes for studio to start
+
+---
+
+### 2️⃣ Clone Repository
+
+Open terminal in Lightning.ai and run:
 
 ```bash
-# Clone your GitHub repo
-git clone https://github.com/<your-username>/license_plate.git
-cd license_plate
-```
+# Clone your repository
+git clone https://github.com/nguyencongtuyenlp/license-plate-recognition.git
+cd license-plate-recognition
 
----
-
-## Step 3: Install Dependencies
-
-```bash
-# Install required packages
-pip install -r requirements.txt
-
-# Verify installation
-python -c "import torch; print(f'PyTorch: {torch.__version__}')"
-python -c "import torch; print(f'CUDA Available: {torch.cuda.is_available()}')"
+# Verify you're in the right directory
+pwd
+ls -la
 ```
 
 **Expected output:**
 ```
-PyTorch: 2.x.x
-CUDA Available: True
+/teamspace/studios/this_studio/license-plate-recognition
+README.md  configs/  data/  docs/  requirements.txt  scripts/  src/
 ```
 
 ---
 
-## Step 4: Download Dataset
+### 3️⃣ Install Dependencies
 
 ```bash
-# Download dataset from Roboflow (COCO format)
+# Install all required packages
+pip install -r requirements.txt
+
+# Verify PyTorch GPU support
+python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else None}')"
+```
+
+**Expected output:**
+```
+CUDA available: True
+GPU: Tesla T4
+```
+
+---
+
+### 4️⃣ Download Dataset
+
+**Option 1: Automatic (Recommended)**
+
+```bash
+# Download COCO format dataset
 python scripts/download_dataset.py --format coco --output data
 
-# This will download ~8,255 images (~400MB)
-# Takes about 2-3 minutes
+# Verify download
+ls -lh data/coco/
 ```
 
-**Verify dataset:**
+**Option 2: Manual**
+
+If the script fails, download manually:
+
+1. Visit: https://universe.roboflow.com/nguyn-cng-tuyn/my-first-project-usuhh-7gecz
+2. Download version 2 in **COCO format**
+3. Upload to Lightning.ai studio
+4. Extract to `data/coco/`
+
+**Verify dataset structure:**
 ```bash
-ls data/coco/
-# Should see: train/ valid/ test/ _annotations.coco.json
+tree data/coco/ -L 2
+```
+
+Expected:
+```
+data/coco/
+├── train/
+│   ├── *.jpg (5,756 images)
+│   └── _annotations.coco.json
+├── valid/
+│   ├── *.jpg (1,640 images)
+│   └── _annotations.coco.json
+└── test/
+    ├── *.jpg (859 images)
+    └── _annotations.coco.json
 ```
 
 ---
 
-## Step 5: Configure Training
+### 5️⃣ Configure Training
 
-Edit `configs/train_plate_detector.yaml` for T4 GPU:
+Check the training config:
+
+```bash
+cat configs/train_plate_detector.yaml
+```
+
+**Recommended settings for T4 GPU:**
 
 ```yaml
+# configs/train_plate_detector.yaml
+data:
+  root_dir: "data"
+  batch_size: 16        # T4 can handle this
+  num_workers: 4        # Parallel data loading
+
+model:
+  num_classes: 2        # background + license_plate
+
 training:
-  batch_size: 16          # T4 can handle larger batches
   epochs: 50
   lr: 0.005
-  amp_enabled: true       # Enable Mixed Precision for speed
+  momentum: 0.9
+  weight_decay: 0.0005
+  warmup_epochs: 3
+  patience: 10          # Early stopping
 
-device: "cuda"
+device: "cuda"          # Use GPU
+amp_enabled: true       # Mixed precision for speed
 ```
 
 ---
 
-## Step 6: Start Training
+### 6️⃣ Start Training
 
 ```bash
-# Start training
+# Start training with monitoring
 python -m src train --config configs/train_plate_detector.yaml --device cuda
 
-# Training will start and show progress:
-# Epoch [0/50] Batch [0/360] Loss: 1.2345 LR: 0.001667
+# Alternative: Run in background with nohup
+nohup python -m src train --config configs/train_plate_detector.yaml --device cuda > training.log 2>&1 &
+
+# Monitor progress
+tail -f training.log
 ```
 
-**What to expect:**
-- **Duration**: ~1.5-2 hours for 50 epochs
-- **Checkpoints**: Saved to `checkpoints/best.pth`
-- **Logs**: TensorBoard logs in `runs/train/`
-- **mAP@0.5**: Should reach ~0.85-0.90 after 50 epochs
+**Expected output:**
+```
+============================================================
+Starting Training — 50 epochs
+Device: cuda
+LR: 0.005, Momentum: 0.9
+Warmup: 3 epochs
+Early Stopping Patience: 10
+============================================================
+
+Epoch [0/50] Batch [0/360] Loss: 1.2345 LR: 0.000167
+Epoch [0/50] Batch [20/360] Loss: 0.9876 LR: 0.000167
+...
+Epoch [0/50] — Loss: 0.8234 | mAP@0.5: 0.1234 | LR: 0.000167 | Time: 234.5s
+  ★ New best mAP@0.5: 0.1234 — Saved!
+```
+
+⏱️ **Training time:** ~1.5-2 hours for 50 epochs (with early stopping, usually stops around epoch 30-35)
 
 ---
 
-## Step 7: Monitor Training
+### 7️⃣ Monitor Training
 
-### Option 1: Terminal Output
+**Option 1: TensorBoard (Recommended)**
 
-Watch the terminal for epoch progress:
-```
-Epoch [10/50] — Loss: 0.3456 | mAP@0.5: 0.7234 | LR: 0.004500 | Time: 125.3s
-  ★ New best mAP@0.5: 0.7234 — Checkpoint saved!
-```
-
-### Option 2: TensorBoard
+Open a new terminal and run:
 
 ```bash
-# In a new terminal
-tensorboard --logdir runs/train --port 6006
-
-# Access at: http://localhost:6006
+cd license-plate-recognition
+tensorboard --logdir runs/train --host 0.0.0.0 --port 6006
 ```
 
+Then click the **TensorBoard** button in Lightning.ai interface.
+
 **Metrics to watch:**
-- `train/loss` - Should decrease steadily
-- `val/mAP@0.5` - Should increase to ~0.85-0.90
-- `train/lr` - Should follow warmup + cosine schedule
+- `train/loss` — Should decrease steadily
+- `val/mAP@0.5` — Should increase (target: >0.85)
+- `train/lr` — Learning rate schedule
+
+**Option 2: CSV Logs**
+
+```bash
+# View metrics in real-time
+tail -f runs/train/metrics.csv
+
+# Or use pandas
+python -c "import pandas as pd; df = pd.read_csv('runs/train/metrics.csv'); print(df.tail(20))"
+```
 
 ---
 
-## Step 8: Download Checkpoints
+### 8️⃣ Check Results
 
 After training completes:
 
 ```bash
-# Best model is saved at:
-checkpoints/best.pth
+# View final metrics
+cat runs/train/metrics.csv | tail -20
 
-# Download to local machine via Lightning.ai UI
-# Or use Lightning CLI to sync
+# Check best checkpoint
+ls -lh checkpoints/
+```
+
+**Expected files:**
+```
+checkpoints/
+├── best.pth          # Best model (highest mAP)
+└── last.pth          # Last epoch model
 ```
 
 ---
 
-## Troubleshooting
-
-### Out of Memory (OOM)
-
-If you get CUDA OOM error:
-
-```yaml
-# Reduce batch size in config
-training:
-  batch_size: 8  # or 4
-```
-
-### Slow Download
-
-If dataset download is slow:
+### 9️⃣ Evaluate Model
 
 ```bash
-# Download manually and upload to Lightning.ai
-# Then extract to data/coco/
+# Evaluate on test set
+python -m src evaluate \
+  --checkpoint checkpoints/best.pth \
+  --config configs/train_plate_detector.yaml \
+  --device cuda
 ```
 
-### Training Stops
+**Expected output:**
+```
+Evaluation Results:
+  mAP@0.5: 0.8734
+  Precision: 0.9012
+  Recall: 0.8456
+  Total images: 859
+```
 
-If training stops unexpectedly:
+---
+
+### 🔟 Download Results
+
+**Download trained model:**
 
 ```bash
-# Resume from checkpoint
-python -m src train --config configs/train_plate_detector.yaml --resume-from checkpoints/epoch_10.pth
+# Create results archive
+mkdir -p results
+cp checkpoints/best.pth results/
+cp -r runs/train results/tensorboard_logs
+tar -czf alpr_training_results.tar.gz results/
+
+# Download via Lightning.ai file browser
+# Right-click on alpr_training_results.tar.gz → Download
 ```
 
 ---
 
-## Performance Comparison
+## 📊 Recording Results
 
-| Environment | GPU | Batch Size | Time (50 epochs) | Cost |
-|-------------|-----|------------|------------------|------|
-| Local GTX 1650 | 4GB | 2-4 | 6-8 hours | Free |
-| Lightning.ai T4 | 16GB | 16 | 1.5-2 hours | Free ✅ |
-| Colab T4 | 16GB | 16 | 2-3 hours | Free (limited) |
-| Local RTX 3060 | 12GB | 8-12 | 2-3 hours | Free |
+Create a results file to document your training:
 
-**Winner**: Lightning.ai T4 - Best combination of speed and cost!
+```bash
+# Create results document
+cat > TRAINING_RESULTS.md << 'EOF'
+# Training Results
+
+## Environment
+- **Platform:** Lightning.ai
+- **GPU:** Tesla T4 (16GB VRAM)
+- **Training Date:** [DATE]
+- **Training Time:** [TIME] hours
+
+## Dataset
+- **Total Images:** 8,255
+- **Train:** 5,756 images
+- **Validation:** 1,640 images
+- **Test:** 859 images
+- **Classes:** 1 (license_plate)
+
+## Hyperparameters
+- **Model:** FasterRCNN-MobileNetV3-FPN
+- **Optimizer:** SGD (momentum=0.9, weight_decay=5e-4)
+- **Learning Rate:** 0.005 (warmup 3 epochs + cosine annealing)
+- **Batch Size:** 16
+- **Epochs:** 50 (early stopped at epoch [X])
+- **Mixed Precision:** Enabled (FP16)
+
+## Results
+- **Best mAP@0.5:** [VALUE]
+- **Final Precision:** [VALUE]
+- **Final Recall:** [VALUE]
+- **Best Epoch:** [NUMBER]
+
+## Training Curve
+[Paste TensorBoard screenshot or describe curve]
+
+## Sample Predictions
+[Add screenshots of predictions if available]
+
+## Notes
+[Any observations during training]
+EOF
+
+# Edit with your actual results
+nano TRAINING_RESULTS.md
+```
 
 ---
 
-## Tips for Best Results
+## 🐛 Troubleshooting
 
-1. **Use Mixed Precision**: Keep `amp_enabled: true` for 2x speedup
-2. **Monitor Early**: Check first 5 epochs - loss should drop quickly
-3. **Early Stopping**: Training may stop early if mAP plateaus (patience=10)
-4. **Save Checkpoints**: Download `best.pth` before closing Studio
-5. **TensorBoard**: Use it to debug if training doesn't converge
+### Issue: CUDA Out of Memory
+
+**Solution:** Reduce batch size
+
+```bash
+python -m src train \
+  --config configs/train_plate_detector.yaml \
+  --batch-size 8 \
+  --device cuda
+```
+
+### Issue: Dataset Download Fails
+
+**Solution:** Download manually from Roboflow and upload to Lightning.ai
+
+### Issue: Training Too Slow
+
+**Check:**
+```bash
+# Verify GPU is being used
+nvidia-smi
+
+# Check data loading
+# If num_workers=0, increase to 4
+```
+
+### Issue: Early Stopping Too Early
+
+**Solution:** Increase patience
+
+```bash
+python -m src train \
+  --config configs/train_plate_detector.yaml \
+  --patience 15 \
+  --device cuda
+```
 
 ---
 
-## Next Steps After Training
+## 💡 Tips for Best Results
 
-1. **Evaluate**: Test on validation set
+1. **Monitor GPU usage:**
    ```bash
-   python -m src evaluate --checkpoint checkpoints/best.pth --device cuda
+   watch -n 1 nvidia-smi
    ```
 
-2. **Inference**: Run on test video
+2. **Use tmux for long training:**
    ```bash
-   python -m src infer --video test.mp4 --output result.mp4 --device cuda
+   tmux new -s training
+   python -m src train --config configs/train_plate_detector.yaml --device cuda
+   # Detach: Ctrl+B, then D
+   # Reattach: tmux attach -t training
    ```
 
-3. **Deploy**: Use FastAPI to serve model
-   ```bash
-   python -m src api --host 0.0.0.0 --port 8000
-   ```
+3. **Save intermediate checkpoints:**
+   - Best model is auto-saved when mAP improves
+   - Check `checkpoints/` directory regularly
+
+4. **Backup results:**
+   - Download checkpoints periodically
+   - Export TensorBoard logs
 
 ---
 
-## Questions?
+## 📈 Expected Performance
 
-- Lightning.ai Docs: https://lightning.ai/docs
-- PyTorch Docs: https://pytorch.org/docs
-- Project Issues: https://github.com/<your-username>/license_plate/issues
+Based on similar datasets:
 
-Happy Training! 🚀
+| Metric | Expected Range | Target |
+|--------|---------------|--------|
+| mAP@0.5 | 0.80 - 0.90 | >0.85 |
+| Precision | 0.85 - 0.95 | >0.90 |
+| Recall | 0.75 - 0.85 | >0.80 |
+| Training Time | 1.5 - 2.5 hours | ~2 hours |
+
+---
+
+## ✅ Checklist
+
+- [ ] Lightning.ai studio created with T4 GPU
+- [ ] Repository cloned
+- [ ] Dependencies installed
+- [ ] Dataset downloaded and verified
+- [ ] Training config reviewed
+- [ ] Training started
+- [ ] TensorBoard monitoring setup
+- [ ] Training completed successfully
+- [ ] Model evaluated on test set
+- [ ] Results documented
+- [ ] Checkpoints downloaded
+- [ ] Results pushed to GitHub
+
+---
+
+## 🚀 Next Steps After Training
+
+1. **Update README.md** with actual results
+2. **Add training curves** (TensorBoard screenshots)
+3. **Test inference** on sample videos
+4. **Push results to GitHub**
+5. **Update portfolio** with project link
+
+---
+
+## 📞 Support
+
+If you encounter issues:
+1. Check Lightning.ai [documentation](https://lightning.ai/docs)
+2. Review error logs: `cat training.log`
+3. Check GPU status: `nvidia-smi`
+4. Verify dataset: `ls -R data/coco/`
+
+---
+
+**Good luck with training! 🎯**
