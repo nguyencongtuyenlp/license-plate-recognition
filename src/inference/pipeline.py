@@ -47,22 +47,25 @@ class ALPRPipeline:
         )
 
         # Plate detector — select based on config
-        plate_model = config.get('plate_model', 'fasterrcnn')
+        plate_cfg = config.get('plate_detector', {})
+        plate_type = plate_cfg.get('type', 'fasterrcnn')
 
-        if plate_model == 'yolo':
+        if plate_type == 'yolo_plate' or plate_type == 'yolo':
             from ..models.yolo_detector import YOLOPlateDetector
             self.plate_detector = YOLOPlateDetector(
                 device=device,
-                confidence_threshold=config.get('plate_conf', 0.5),
-                model_path=config.get('plate_weights', None),
+                confidence_threshold=plate_cfg.get('confidence', 0.5),
+                model_path=plate_cfg.get('model_path', None),
             )
+            print(f"[Pipeline] Loaded YOLOv8 plate detector: {plate_cfg.get('model_path')}")
         else:
             from ..models.plate_detector import PlateDetector
             self.plate_detector = PlateDetector(
                 device=device,
-                confidence_threshold=config.get('plate_conf', 0.5),
-                num_classes=2,
+                confidence_threshold=plate_cfg.get('confidence', 0.5),
+                num_classes= 2,
             )
+            print("[Pipeline] Loaded FasterRCNN plate detector")
 
         # SORT tracker
         tracker_cfg = config.get('tracker', {})
