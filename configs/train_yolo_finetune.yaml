@@ -1,0 +1,44 @@
+# ============================================================
+# YOLOv8 Fine-Tuning Configuration
+# Resume from best checkpoint with lighter augmentation
+# Goal: Improve mAP@0.5:0.95 from 73.67% to 75%+
+# ============================================================
+
+# Model configuration
+model:
+  type: "yolov8"
+  variant: "yolov8n"
+
+# Fine-tuning hyperparameters
+training:
+  epochs: 20               # Short fine-tune session
+  batch_size: 16
+  imgsz: 640
+  optimizer: "auto"        # Use MuSGD like Colab for stability
+  warmup_epochs: 0         # No warmup needed for fine-tune
+  patience: 20             # Early stopping
+  save_period: 5
+
+  # LIGHTER augmentation for fine-tuning
+  # Focus on precise bbox regression
+  augmentation:
+    mosaic: 0.0            # Disable Mosaic (already fine-tuned)
+    mixup: 0.0             # Disable MixUp
+    degrees: 5.0           # Light rotation only
+    translate: 0.1         # Light translation
+    scale: 0.3             # Light scale
+    fliplr: 0.5            # Keep horizontal flip
+    flipud: 0.0            # No vertical flip
+    hsv_h: 0.01            # Minimal color aug
+    hsv_s: 0.4
+    hsv_v: 0.2
+    erasing: 0.1           # Minimal erasing
+    copy_paste: 0.0        # Disable copy-paste
+
+# Dataset paths
+data:
+  coco_dir: "data/coco"
+  yolo_dir: "data/yolo"
+
+# Hardware settings
+device: "cuda"
