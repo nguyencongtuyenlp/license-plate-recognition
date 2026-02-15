@@ -145,14 +145,34 @@ class ALPRPipeline:
                 iy1 = max(0, iy1)
                 ix2 = min(frame.shape[1], ix2)
                 iy2 = min(frame.shape[0], iy2)
-                vehicle_crop = frame[iy1:iy2, ix1:ix2]
 
-                if vehicle_crop.size > 0:
-                    plate_dets = self.plate_detector.detect(vehicle_crop)
+                # FIX: Detect plates on FULL FRAME (not crop) to maintain scale
+                # Model trained on 640x640 frames, vehicle crops are too small
+                if ix2 > ix1 and iy2 > iy1:
+                    plate_dets_full = self.plate_detector.detect(frame)
+                    
+                    # Filter: keep only plates inside this vehicle bbox
+                    plate_dets = []
+                    for p in plate_dets_full:
+                        px1, py1, px2, py2 = p.bbox
+                        # Check if plate center is inside vehicle bbox
+                        pcx, pcy = (px1 + px2) / 2, (py1 + py2) / 2
+                        if ix1 <= pcx <= ix2 and iy1 <= pcy <= iy2:
+                            # Convert plate bbox from frame coords to crop coords
+                            p_crop = Detection(
+                                bbox=[px1 - ix1, py1 - iy1, px2 - ix1, py2 - iy1],
+                                confidence=p.confidence,
+                                class_id=p.class_id,
+                                class_name=p.class_name,
+                            )
+                            plate_dets.append(p_crop)
 
                     if plate_dets:
                         best_plate = max(plate_dets, key=lambda d: d.confidence)
                         px1, py1, px2, py2 = map(int, best_plate.bbox)
+                        
+                        # Crop plate from vehicle crop
+                        vehicle_crop = frame[iy1:iy2, ix1:ix2]
                         plate_crop = vehicle_crop[py1:py2, px1:px2]
 
                         if plate_crop.size > 0:
