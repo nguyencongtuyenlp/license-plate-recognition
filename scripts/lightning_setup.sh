@@ -2,11 +2,10 @@
 # ============================================================
 # Lightning.ai Quick Start Script
 # ============================================================
-# This script automates the setup process on Lightning.ai
-# Run this after creating your T4 GPU studio
+# Run this after cloning the repo on Lightning.ai T4 GPU studio
 # ============================================================
 
-set -e  # Exit on error
+set -e
 
 echo "============================================================"
 echo "🚀 ALPR Training Setup - Lightning.ai"
@@ -14,67 +13,53 @@ echo "============================================================"
 echo ""
 
 # Step 1: Verify CUDA
-echo "📋 Step 1/6: Verifying CUDA availability..."
-python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available!'; print(f'✅ GPU: {torch.cuda.get_device_name(0)}')"
+echo "📋 Step 1/5: Verifying CUDA availability..."
+python3 -c "import torch; assert torch.cuda.is_available(), 'CUDA not available!'; print(f'✅ GPU: {torch.cuda.get_device_name(0)}')"
 echo ""
 
 # Step 2: Install dependencies
-echo "📦 Step 2/6: Installing dependencies..."
+echo "📦 Step 2/5: Installing dependencies..."
 pip install -q -r requirements.txt
+pip install -q roboflow
 echo "✅ Dependencies installed"
 echo ""
 
 # Step 3: Download dataset
-echo "📥 Step 3/6: Downloading dataset from Roboflow..."
-python scripts/download_dataset.py --format coco --output data
-echo "✅ Dataset downloaded"
+echo "📥 Step 3/5: Downloading dataset from Roboflow..."
+rm -rf data/  # Clean start
+python3 scripts/download_dataset.py --format coco --output data
 echo ""
 
 # Step 4: Verify dataset
-echo "🔍 Step 4/6: Verifying dataset structure..."
-if [ -d "data/coco/train" ] && [ -d "data/coco/valid" ] && [ -d "data/coco/test" ]; then
-    TRAIN_COUNT=$(ls data/coco/train/*.jpg 2>/dev/null | wc -l)
-    VALID_COUNT=$(ls data/coco/valid/*.jpg 2>/dev/null | wc -l)
-    TEST_COUNT=$(ls data/coco/test/*.jpg 2>/dev/null | wc -l)
-    echo "✅ Dataset verified:"
-    echo "   - Train: $TRAIN_COUNT images"
-    echo "   - Valid: $VALID_COUNT images"
-    echo "   - Test: $TEST_COUNT images"
-else
-    echo "❌ Dataset structure incomplete!"
-    exit 1
-fi
+echo "🔍 Step 4/5: Verifying dataset..."
+python3 -c "
+import os, sys
+ok = True
+for split in ['train', 'valid', 'test']:
+    path = f'data/coco/{split}'
+    if os.path.exists(path):
+        count = len([f for f in os.listdir(path) if f.endswith(('.jpg','.jpeg','.png'))])
+        ann = os.path.exists(os.path.join(path, '_annotations.coco.json'))
+        print(f'  ✅ {split}: {count} images, annotations: {\"✅\" if ann else \"❌\"}')
+        if count == 0: ok = False
+    else:
+        print(f'  ❌ {split}: not found')
+        ok = False
+if not ok:
+    print('⚠ Dataset verification failed!')
+    sys.exit(1)
+print('✅ Dataset verified!')
+"
 echo ""
 
-# Step 5: Create directories
-echo "📁 Step 5/6: Creating output directories..."
-mkdir -p checkpoints runs/train
-echo "✅ Directories created"
-echo ""
-
-# Step 6: Display training command
-echo "🎓 Step 6/6: Ready to train!"
-echo ""
+# Step 5: Ready
 echo "============================================================"
-echo "Run the following command to start training:"
-echo ""
-echo "  python -m src train --config configs/train_plate_detector.yaml --device cuda"
-echo ""
-echo "Or use this optimized command for T4 GPU:"
+echo "✅ Setup complete! Start training with:"
 echo ""
 echo "  python -m src train \\"
 echo "    --config configs/train_plate_detector.yaml \\"
 echo "    --batch-size 16 \\"
 echo "    --device cuda"
 echo ""
+echo "⏱️  Expected: ~1.5-2 hours | 🎯 Target mAP@0.5: >0.85"
 echo "============================================================"
-echo "📊 Monitor training:"
-echo "  - Terminal: Watch epoch progress"
-echo "  - TensorBoard: tensorboard --logdir runs/train --port 6006"
-echo "  - Logs: tail -f runs/train/metrics.csv"
-echo ""
-echo "⏱️  Expected time: ~1.5-2 hours (50 epochs with early stopping)"
-echo "🎯 Target mAP@0.5: >0.85"
-echo "============================================================"
-echo ""
-echo "✅ Setup complete! Happy training! 🚀"
