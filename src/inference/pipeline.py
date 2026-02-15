@@ -192,6 +192,43 @@ class ALPRPipeline:
                 result['plate_texts'][track_id] = plate_text
 
         result['counts'] = self.counter.get_counts()
+        
+        # ========== VISUALIZATION ==========
+        annotated = frame.copy()
+        
+        # Draw counting line
+        line_start, line_end = self.counter.line_start, self.counter.line_end
+        cv2.line(annotated, line_start, line_end, (0, 255, 0), 2)
+        
+        # Draw each tracked vehicle
+        for vehicle in result['tracked_vehicles']:
+            track_id = vehicle['track_id']
+            x1, y1, x2, y2 = map(int, vehicle['bbox'])
+            cx, cy = map(int, vehicle['centroid'])
+            
+            # Vehicle bbox (blue)
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), (255, 0, 0), 2)
+            
+            # Track ID
+            cv2.putText(annotated, f"ID:{track_id}", (x1, y1-10),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+            
+            # Centroid
+            cv2.circle(annotated, (cx, cy), 4, (0, 255, 255), -1)
+            
+            # Plate text if available (green)
+            if track_id in result['plate_texts']:
+                plate_text = result['plate_texts'][track_id]
+                cv2.putText(annotated, plate_text, (x1, y2+20),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        
+        # Draw count statistics
+        counts = result['counts']
+        count_text = f"Count: {counts.get('total_count', 0)}"
+        cv2.putText(annotated, count_text, (10, 30),
+                   cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        
+        result['annotated_frame'] = annotated
 
         return result
 
