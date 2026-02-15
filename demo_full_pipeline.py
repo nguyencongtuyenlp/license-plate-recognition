@@ -128,7 +128,11 @@ def main():
         cap.release()
         if args.output:
             out.release()
-        cv2.destroyAllWindows()
+        try:
+            if args.show:
+                cv2.destroyAllWindows()
+        except:
+            pass  # Ignore GUI errors on headless servers
     
     # Summary
     print("\n" + "="*60)
