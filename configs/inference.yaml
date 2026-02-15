@@ -1,0 +1,60 @@
+# =============================================================================
+# ALPR Inference Configuration
+# Full pipeline: Vehicle Detection → Tracking → Plate Detection → OCR
+# =============================================================================
+
+# Device configuration
+device: "cuda"
+
+# Vehicle detector (YOLOv8 for vehicles)
+vehicle_detector:
+  type: "yolo"
+  model: "yolov8n.pt"  # Pretrained COCO model (cars, trucks, etc.)
+  confidence: 0.5
+  classes: [2, 3, 5, 7]  # car, motorcycle, bus, truck
+
+# Tracker (SORT algorithm)
+tracker:
+  type: "sort"
+  max_age: 30
+  min_hits: 3
+  iou_threshold: 0.3
+
+# Line crossing counter
+line_counter:
+  enabled: true
+  line_position: 0.5  # Vertical position (0-1, 0.5 = middle)
+  direction: "horizontal"  # horizontal or vertical
+
+# License plate detector (YOLOv8 trained model)
+plate_detector:
+  type: "yolo_plate"
+  model_path: "training_artifacts/yolov8n_baseline/best.pt"
+  confidence: 0.5
+  use_tta: true  # Test-time augmentation
+
+# OCR engine
+ocr:
+  type: "easyocr"
+  languages: ["en"]  # English for license plates
+  gpu: true
+  confidence: 0.5
+
+# Visualization settings
+visualization:
+  show_vehicles: true
+  show_tracks: true
+  show_plates: true
+  show_ocr: true
+  show_count: true
+  line_color: [0, 255, 0]  # Green
+  bbox_color: [255, 0, 0]  # Blue
+  text_color: [255, 255, 255]  # White
+  thickness: 2
+  font_scale: 0.6
+
+# Performance settings
+performance:
+  skip_frames: 0  # Process every frame (0 = no skip)
+  resize_width: null  # Resize input (null = no resize)
+  batch_size: 1
