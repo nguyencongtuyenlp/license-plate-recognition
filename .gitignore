@@ -1,5 +1,5 @@
 # Dataset (download via script)
-data/
+/data/
 dataset.coco
 dataset.yolov8
 *.zip
