@@ -5,7 +5,8 @@ Main entry point for running the application from terminal.
 Supports 4 commands: train, infer, evaluate, api.
 
 Usage:
-    python -m src train --config configs/train.yaml
+    python -m src train --config configs/train_yolo.yaml --model yolo --device cuda
+    python -m src train --config configs/train_plate_detector.yaml --model fasterrcnn
     python -m src infer --config configs/infer.yaml --video video.mp4
     python -m src evaluate --config configs/train.yaml
     python -m src api --config configs/api.yaml
@@ -33,10 +34,15 @@ def parse_args():
     train_parser = subparsers.add_parser('train', help='Train plate detector')
     train_parser.add_argument('--config', type=str, required=True,
                               help='Path to YAML config file')
+    train_parser.add_argument('--model', type=str, default='yolo',
+                              choices=['yolo', 'fasterrcnn'],
+                              help='Model type (default: yolo)')
     train_parser.add_argument('--device', type=str, default=None,
                               help='Device (cpu/cuda)')
     train_parser.add_argument('--epochs', type=int, default=None,
                               help='Number of epochs (overrides config)')
+    train_parser.add_argument('--batch-size', type=int, default=None,
+                              help='Batch size (overrides config)')
     train_parser.add_argument('--lr', type=float, default=None,
                               help='Learning rate (overrides config)')
     train_parser.add_argument('--resume', type=str, default=None,
@@ -77,14 +83,9 @@ def parse_args():
 
 
 def cmd_train(args):
-    """Run the training pipeline."""
+    """Run the training pipeline (YOLOv8 or FasterRCNN)."""
     import torch
     from .utils.config import ConfigManager
-    from .data.plate_dataset import COCOPlateDataset
-    from .data.transforms import TrainTransform, ValTransform
-    from .data.data_utils import collate_fn
-    from .models.plate_detector import PlateDetector
-    from .training.trainer import Trainer
 
     # Load config and apply CLI overrides
     config_manager = ConfigManager()
@@ -94,61 +95,90 @@ def cmd_train(args):
         config['device'] = args.device
     if args.epochs:
         config.setdefault('training', {})['epochs'] = args.epochs
+    if args.batch_size:
+        config.setdefault('training', {})['batch_size'] = args.batch_size
     if args.lr:
         config.setdefault('training', {})['lr'] = args.lr
     if args.resume:
         config.setdefault('training', {})['resume_from'] = args.resume
 
     device = config.get('device', 'cuda' if torch.cuda.is_available() else 'cpu')
+    model_type = getattr(args, 'model', 'yolo')
+
+    if model_type == 'yolo':
+        _train_yolo(config, device)
+    else:
+        _train_fasterrcnn(config, device)
+
+
+def _train_yolo(config, device):
+    """Train using YOLOv8 pipeline."""
+    from .training.yolo_trainer import YOLOTrainer
+
+    trainer = YOLOTrainer(config=config, device=device)
+
+    # Prepare dataset (COCO → YOLO format)
+    data_cfg = config.get('data', {})
+    coco_dir = data_cfg.get('coco_dir', 'data/coco')
+    yolo_dir = data_cfg.get('yolo_dir', 'data/yolo')
+
+    data_yaml = trainer.prepare_dataset(coco_dir, yolo_dir)
+
+    # Train
+    results = trainer.train(data_yaml)
+    print(f"\n🎉 YOLOv8 Training Complete!")
+    print(f"   mAP@0.5: {results['metrics']['mAP50']:.4f}")
+    print(f"   Best model: {results['best_model']}")
+
+
+def _train_fasterrcnn(config, device):
+    """Train using FasterRCNN pipeline (baseline)."""
+    import torch
+    from .data.plate_dataset import COCOPlateDataset
+    from .data.transforms import TrainTransform, ValTransform
+    from .data.data_utils import collate_fn
+    from .models.plate_detector import PlateDetector
+    from .training.trainer import Trainer
 
     # Datasets
     data_cfg = config.get('data', {})
+    root_dir = data_cfg.get('root_dir', data_cfg.get('coco_dir', 'data/coco'))
+
     train_dataset = COCOPlateDataset(
-        root_dir=data_cfg.get('root_dir', 'data'),
-        split='train',
-        transforms=TrainTransform(),
+        root_dir=root_dir, split='train', transforms=TrainTransform(),
     )
     val_dataset = COCOPlateDataset(
-        root_dir=data_cfg.get('root_dir', 'data'),
-        split='valid',
-        transforms=ValTransform(),
+        root_dir=root_dir, split='valid', transforms=ValTransform(),
     )
 
     # DataLoaders
+    batch_size = data_cfg.get('batch_size', 4)
+    num_workers = data_cfg.get('num_workers', 2)
+
     train_loader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=data_cfg.get('batch_size', 4),
-        shuffle=True,
-        num_workers=data_cfg.get('num_workers', 2),
-        collate_fn=collate_fn,
+        train_dataset, batch_size=batch_size, shuffle=True,
+        num_workers=num_workers, collate_fn=collate_fn,
     )
     val_loader = torch.utils.data.DataLoader(
-        val_dataset,
-        batch_size=data_cfg.get('batch_size', 4),
-        shuffle=False,
-        num_workers=data_cfg.get('num_workers', 2),
-        collate_fn=collate_fn,
+        val_dataset, batch_size=batch_size, shuffle=False,
+        num_workers=num_workers, collate_fn=collate_fn,
     )
 
     # Model
     model_cfg = config.get('model', {})
     detector = PlateDetector(
-        device=device,
-        num_classes=model_cfg.get('num_classes', 2),
+        device=device, num_classes=model_cfg.get('num_classes', 2),
     )
     model = detector.get_model()
 
     # Train
     trainer = Trainer(
-        model=model,
-        train_loader=train_loader,
-        val_loader=val_loader,
-        config=config,
-        device=device,
+        model=model, train_loader=train_loader,
+        val_loader=val_loader, config=config, device=device,
     )
 
     results = trainer.train()
-    print(f"\nTraining results: {results}")
+    print(f"\nFasterRCNN Training results: {results}")
 
 
 def cmd_infer(args):

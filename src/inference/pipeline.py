@@ -13,8 +13,6 @@ import numpy as np
 import cv2
 
 from ..models.base_detector import Detection
-from ..models.vehicle_detector import VehicleDetector
-from ..models.plate_detector import PlateDetector
 from ..tracking.sort_tracker import SORTTracker
 from ..counting.line_counter import LineCrossingCounter
 from ..ocr.plate_ocr import PlateOCR
@@ -42,17 +40,29 @@ class ALPRPipeline:
         device = config.get('device', 'cpu')
 
         # Vehicle detector (pretrained COCO)
+        from ..models.vehicle_detector import VehicleDetector
         self.vehicle_detector = VehicleDetector(
             device=device,
             confidence_threshold=config.get('vehicle_conf', 0.5),
         )
 
-        # Plate detector (fine-tuned FasterRCNN)
-        self.plate_detector = PlateDetector(
-            device=device,
-            confidence_threshold=config.get('plate_conf', 0.5),
-            num_classes=2,
-        )
+        # Plate detector — select based on config
+        plate_model = config.get('plate_model', 'fasterrcnn')
+
+        if plate_model == 'yolo':
+            from ..models.yolo_detector import YOLOPlateDetector
+            self.plate_detector = YOLOPlateDetector(
+                device=device,
+                confidence_threshold=config.get('plate_conf', 0.5),
+                model_path=config.get('plate_weights', None),
+            )
+        else:
+            from ..models.plate_detector import PlateDetector
+            self.plate_detector = PlateDetector(
+                device=device,
+                confidence_threshold=config.get('plate_conf', 0.5),
+                num_classes=2,
+            )
 
         # SORT tracker
         tracker_cfg = config.get('tracker', {})

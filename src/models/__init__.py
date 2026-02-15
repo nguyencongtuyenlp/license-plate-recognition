@@ -1,9 +1,10 @@
 """
-models — Detection models.
-
+models — Object Detection Models
+==================================
 Contains:
-    - BaseDetector (ABC): Abstract interface for all detectors
-    - DetectorFactory: Factory pattern for creating detectors by name
-    - PlateDetector: FasterRCNN-MobileNetV3 for license plate detection
-    - VehicleDetector: Pretrained COCO model for vehicle detection
+    - BaseDetector: Abstract interface + DetectorFactory
+    - PlateDetector: FasterRCNN-MobileNetV3 baseline
+    - YOLOPlateDetector: YOLOv8 high-accuracy detector
+    - VehicleDetector: COCO-pretrained vehicle detector
+    - CBAM, SEBlock: Attention mechanisms
 """

@@ -1,0 +1,47 @@
+# ============================================================
+# YOLOv8 Training Configuration
+# License Plate Detection with Advanced Augmentation
+# ============================================================
+
+# Model configuration
+model:
+  type: "yolov8"
+  variant: "yolov8n"          # nano variant (fast + accurate)
+  attention: "cbam"            # CBAM attention module
+
+# Training hyperparameters
+training:
+  epochs: 50
+  batch_size: 16
+  imgsz: 640
+  optimizer: "AdamW"
+  lr: 0.01
+  lrf: 0.01                   # Final LR ratio (lr * lrf)
+  warmup_epochs: 3
+  patience: 20                 # Early stopping patience
+
+  # Save checkpoint every N epochs
+  save_period: 10
+
+  # Advanced augmentation settings
+  augmentation:
+    mosaic: 1.0                # Mosaic probability (4-image composite)
+    mixup: 0.15                # MixUp probability (alpha blending)
+    degrees: 10.0              # Random rotation range (±degrees)
+    translate: 0.2             # Random translation fraction
+    scale: 0.5                 # Random scale factor
+    fliplr: 0.5                # Horizontal flip probability
+    flipud: 0.0                # Vertical flip probability
+    hsv_h: 0.015               # HSV-Hue augmentation range
+    hsv_s: 0.7                 # HSV-Saturation augmentation range
+    hsv_v: 0.4                 # HSV-Value augmentation range
+    erasing: 0.3               # Random erasing probability (CutOut)
+    copy_paste: 0.1            # Copy-paste probability
+
+# Dataset paths (relative to project root)
+data:
+  coco_dir: "data/coco"       # COCO format input
+  yolo_dir: "data/yolo"       # YOLO format output (auto-generated)
+
+# Hardware settings
+device: "cuda"
