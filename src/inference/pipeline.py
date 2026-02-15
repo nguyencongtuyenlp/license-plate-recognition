@@ -198,6 +198,9 @@ class ALPRPipeline:
         
         # Draw counting line
         line_start, line_end = self.counter.line_start, self.counter.line_end
+        # Convert to tuple of ints for OpenCV
+        line_start = tuple(map(int, line_start))
+        line_end = tuple(map(int, line_end))
         cv2.line(annotated, line_start, line_end, (0, 255, 0), 2)
         
         # Draw each tracked vehicle
