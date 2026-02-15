@@ -1,0 +1,45 @@
+# ============================================================
+# YOLOv8s Training Configuration
+# Larger model for higher mAP@0.5:0.95
+# Expected: 74-75% mAP@0.5:0.95 (vs 73.67% from YOLOv8n)
+# ============================================================
+
+# Model configuration
+model:
+  type: "yolov8"
+  variant: "yolov8s"  # 11M params (vs 3M for yolov8n)
+
+# Training hyperparameters
+training:
+  epochs: 50
+  batch_size: 16       # Same as yolov8n
+  imgsz: 640
+  optimizer: "AdamW"
+  lr: 0.01
+  lrf: 0.01
+  warmup_epochs: 3
+  patience: 20         # Early stopping
+  save_period: 10
+
+  # Same augmentation as baseline for fair comparison
+  augmentation:
+    mosaic: 1.0
+    mixup: 0.15
+    degrees: 10.0
+    translate: 0.2
+    scale: 0.5
+    fliplr: 0.5
+    flipud: 0.0
+    hsv_h: 0.015
+    hsv_s: 0.7
+    hsv_v: 0.4
+    erasing: 0.3
+    copy_paste: 0.1
+
+# Dataset paths
+data:
+  coco_dir: "data/coco"
+  yolo_dir: "data/yolo"
+
+# Hardware settings
+device: "cuda"
