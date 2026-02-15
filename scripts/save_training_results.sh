@@ -14,27 +14,37 @@ mkdir -p training_artifacts/yolov8n_baseline
 mkdir -p training_artifacts/yolov8n_finetune
 mkdir -p training_artifacts/visualizations
 
-# 2. Copy model weights
+# 2. Copy model weights (tìm tự động)
 echo "💾 Copying model weights..."
-cp runs/detect/yolo/train/weights/best.pt training_artifacts/yolov8n_baseline/best.pt
-cp runs/detect/yolo/train/weights/last.pt training_artifacts/yolov8n_baseline/last.pt
+# Tìm thư mục train mới nhất
+TRAIN_DIR=$(find runs/detect -type d -name "train*" | sort -r | head -1)
+if [ -z "$TRAIN_DIR" ]; then
+    echo "❌ Cannot find training directory!"
+    exit 1
+fi
+
+echo "Found training dir: $TRAIN_DIR"
+
+cp $TRAIN_DIR/weights/best.pt training_artifacts/yolov8n_baseline/best.pt
+cp $TRAIN_DIR/weights/last.pt training_artifacts/yolov8n_baseline/last.pt
 
 # Copy fine-tune model nếu có
-if [ -d "runs/detect/val2" ]; then
-    cp runs/detect/val2/weights/best.pt training_artifacts/yolov8n_finetune/best.pt 2>/dev/null || true
+FINETUNE_DIR=$(find runs/detect -type d -name "train2" 2>/dev/null | head -1)
+if [ -n "$FINETUNE_DIR" ]; then
+    cp $FINETUNE_DIR/weights/best.pt training_artifacts/yolov8n_finetune/best.pt 2>/dev/null || true
 fi
 
 # 3. Copy training logs
 echo "📊 Copying training logs..."
-cp runs/detect/yolo/train/results.csv training_artifacts/yolov8n_baseline/
-cp runs/detect/yolo/train/args.yaml training_artifacts/yolov8n_baseline/
+cp $TRAIN_DIR/results.csv training_artifacts/yolov8n_baseline/
+cp $TRAIN_DIR/args.yaml training_artifacts/yolov8n_baseline/
 
 # 4. Copy visualizations
 echo "🎨 Copying visualizations..."
-cp runs/detect/yolo/train/results.png training_artifacts/visualizations/training_curves.png
-cp runs/detect/yolo/train/confusion_matrix.png training_artifacts/visualizations/ 2>/dev/null || true
-cp runs/detect/yolo/train/val_batch0_pred.jpg training_artifacts/visualizations/ 2>/dev/null || true
-cp runs/detect/yolo/train/labels.jpg training_artifacts/visualizations/ 2>/dev/null || true
+cp $TRAIN_DIR/results.png training_artifacts/visualizations/training_curves.png 2>/dev/null || true
+cp $TRAIN_DIR/confusion_matrix.png training_artifacts/visualizations/ 2>/dev/null || true
+cp $TRAIN_DIR/val_batch0_pred.jpg training_artifacts/visualizations/ 2>/dev/null || true
+cp $TRAIN_DIR/labels.jpg training_artifacts/visualizations/ 2>/dev/null || true
 
 # 5. Tạo summary file
 echo "📝 Creating summary file..."
